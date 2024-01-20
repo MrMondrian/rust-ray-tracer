@@ -17,7 +17,27 @@ fn array_to_image(arr: Array3<u8>) -> RgbImage {
 }
 
 fn get_color(ray: Ray) -> Vector3<u8> {
-    Vector3::new(100,200,255)
+    let direction = ray.direction / ray.direction.norm();
+    let a = 0.5 * (direction[1] + 1.0);
+    let new_color = (1.0-a)*Vector3::new(1.0, 1.0, 1.0) + a*Vector3::new(0.5, 0.7, 1.0);
+    return float_color_to_byte_color(new_color)
+}
+
+fn float_color_to_byte_color(color: Vector3<f32>) -> Vector3<u8> {
+    let result = color
+    .iter()
+    .map(|x| float_pixel_to_byte(x));
+    return Vector3::from_iterator(result);
+}
+
+fn float_pixel_to_byte(pixel: &f32) -> u8 {
+    let scaled = pixel * 255.0;
+    if scaled > 255.0 {
+        return 255 
+    }
+    else {
+        return scaled as u8;
+    }
 }
 
 fn main() {
