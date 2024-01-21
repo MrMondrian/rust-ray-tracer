@@ -6,13 +6,17 @@ use nalgebra::Vector3;
 use ray::Ray;
 mod ray;
 
-fn hit_sphere(center: Vector3<f64>, radius: f64, ray: &Ray) -> bool {
+fn hit_sphere(center: Vector3<f64>, radius: f64, ray: &Ray) -> f64 {
     let oc = ray.origin - center;
     let a = ray.direction.dot(&ray.direction);
     let b = 2.0 * oc.dot(&ray.direction);
     let c = oc.dot(&oc) - radius * radius;
     let discriminant = b*b - 4.0*a*c;
-    return discriminant >= 0.0;
+    if discriminant < 0.0 {
+        return -1.0;
+    } else {
+        return -b - (discriminant) / (2.0 * a).sqrt();
+    }
 }
 
 fn array_to_image(arr: Array3<u8>) -> RgbImage {
@@ -25,26 +29,21 @@ fn array_to_image(arr: Array3<u8>) -> RgbImage {
         .expect("container should have the right size for the image dimensions")
 }
 
-fn get_color(ray: Ray) -> Vector3<u8> {
-    if hit_sphere(Vector3::new(0.0,0.0,-1.0), 0.5, &ray) {
-        return Vector3::new(255,0,0);
+fn get_color(ray: Ray) -> Vector3<f64> {
+    let t = hit_sphere(Vector3::new(0.0,0.0,-1.0), 0.5, &ray);
+    if t > 0.0 {
+        let N = ray.at(t) - Vector3::new(0.0,0.0,-1.0);
+        let normed = N / N.norm();
+        return 0.5 * Vector3::new(normed[0] + 1.0, normed[1] + 1.0, normed[2] + 1.0);
     }
     let direction = ray.direction / ray.direction.norm();
     let a = 0.5 * (direction[1] + 1.0);
-    let new_color = (1.0-a)*Vector3::new(1.0, 1.0, 1.0) + a*Vector3::new(0.5, 0.7, 1.0);
-    return float_color_to_byte_color(new_color)
-}
-
-fn float_color_to_byte_color(color: Vector3<f64>) -> Vector3<u8> {
-    let result = color
-    .iter()
-    .map(|x| float_pixel_to_byte(x));
-    return Vector3::from_iterator(result);
+    return (1.0-a)*Vector3::new(1.0, 1.0, 1.0) + a*Vector3::new(0.5, 0.7, 1.0);
 }
 
 fn float_pixel_to_byte(pixel: &f64) -> u8 {
-    let scaled = pixel * 255.0;
-    if scaled > 255.0 {
+    let scaled = pixel * 255.999;
+    if scaled > 255.999 {
         return 255 
     }
     else {
@@ -84,9 +83,9 @@ fn main() {
             let r = Ray::new(camera_point,ray_direction);
             let color = get_color(r);
             let (r,g,b) = (color[0], color[1], color[2]);
-            pixels[[j,i,0]] = r;
-            pixels[[j,i,1]] = g;
-            pixels[[j,i,2]] = b;
+            pixels[[j,i,0]] = float_pixel_to_byte(&r);
+            pixels[[j,i,1]] = float_pixel_to_byte(&g);
+            pixels[[j,i,2]] = float_pixel_to_byte(&b);
         }
     }
     bar.finish();
