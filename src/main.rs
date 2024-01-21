@@ -43,9 +43,9 @@ fn float_pixel_to_byte(pixel: &f32) -> u8 {
 fn main() {
     let aspect_ratio: f32 = 16.0 / 9.0;
     let image_width: usize = 400;
-    let image_height: usize = (image_width as f32 * aspect_ratio) as usize;
-    let view_width : f32 = 2.0;
-    let view_height: f32 = view_width * (image_height as f32 / image_width as f32);
+    let image_height: usize = (image_width as f32 / aspect_ratio) as usize;
+    let view_height : f32 = 2.0;
+    let view_width: f32 = view_height * (image_width as f32 / image_height as f32);
 
     let focal_length: f32 = 1.0;
     let camera_point = Vector3::new(0.0,0.0,0.0);
@@ -62,19 +62,19 @@ fn main() {
 
 
 
-    let mut pixels: Array3<u8> = Array3::zeros((image_width, image_height, 3));
+    let mut pixels: Array3<u8> = Array3::zeros((image_height, image_width, 3));
     let bar  = ProgressBar::new((image_width * image_height * 3) as u64);
-    for x in 0..image_width {
-        for y in 0..image_height {
+    for j in 0..image_height {
+        for i in 0..image_width {
             bar.inc(1);
-            let pixel_center = pixel00_loc + (x as f32 * pixel_delta_u) + (y as f32 * pixel_delta_v);
+            let pixel_center = pixel00_loc + (i as f32 * pixel_delta_u) + (j as f32 * pixel_delta_v);
             let ray_direction = pixel_center - camera_point;
             let r = Ray::new(camera_point,ray_direction);
             let color = get_color(r);
             let (r,g,b) = (color[0], color[1], color[2]);
-            pixels[[x,y,0]] = r;
-            pixels[[x,y,1]] = g;
-            pixels[[x,y,2]] = b;
+            pixels[[j,i,0]] = r;
+            pixels[[j,i,1]] = g;
+            pixels[[j,i,2]] = b;
         }
     }
     bar.finish();
