@@ -15,7 +15,7 @@ fn hit_sphere(center: Vector3<f64>, radius: f64, ray: &Ray) -> f64 {
     if discriminant < 0.0 {
         return -1.0;
     } else {
-        return -b - (discriminant) / (2.0 * a).sqrt();
+        return (-b - discriminant.sqrt()) / (2.0 * a);
     }
 }
 
@@ -32,8 +32,8 @@ fn array_to_image(arr: Array3<u8>) -> RgbImage {
 fn get_color(ray: Ray) -> Vector3<f64> {
     let t = hit_sphere(Vector3::new(0.0,0.0,-1.0), 0.5, &ray);
     if t > 0.0 {
-        let N = ray.at(t) - Vector3::new(0.0,0.0,-1.0);
-        let normed = N / N.norm();
+        let n = ray.at(t) - Vector3::new(0.0,0.0,-1.0);
+        let normed = n / n.norm();
         return 0.5 * Vector3::new(normed[0] + 1.0, normed[1] + 1.0, normed[2] + 1.0);
     }
     let direction = ray.direction / ray.direction.norm();
