@@ -1,36 +1,35 @@
-use hitable::Hitable;
-use hitable::HitRecord;
+use crate::hitable::Hitable;
+use crate::hitable::HitRecord;
+use crate::ray::Ray;
 use std::vec::Vec;
 
 
 pub struct HitableList {
-    pub objects: Vec<Hitable>;
+    pub objects: Vec<Box<dyn Hitable>>,
 }
 
 impl HitableList {
-    fn new() -> Self {
-        let mut objects = Vec::new();
-        Self{objects};
+    pub fn new() -> Self {
+        let objects = Vec::new();
+        Self{objects}
     }
 
-    fn clear(&self) -> () {
-        self.objects.clear();
-    }
+    // pub fn clear(&mut self) -> () {
+    //     self.objects.clear();
+    // }
 
-    fn add(&self, object: Hitable) -> () {
+    pub fn add(&mut self, object: Box<dyn Hitable>) -> () {
         self.objects.push(object);
     }
 
-    fn hit(&self, &ray: Ray, t_min: f64, t_max: f64) -> Option(HitRecord) {
-        let hit_anything = false;
-        let closest_so_far = t_max;
-        let record: Option(HitRecord) = None;
+    pub fn hit(&self, ray: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord> {
+        let mut closest_so_far = t_max;
+        let mut record: Option<HitRecord> = None;
 
-        for object in self.objects {
+        for object in self.objects.iter() {
             if let Some(x) = object.hit(ray, t_min, closest_so_far) {
-                hit_anything = true;
                 closest_so_far = x.t;
-                record = x;
+                record = Some(x);
             }
         }
         return record;

@@ -3,21 +3,13 @@ use ndarray::Array3;
 use std::fs;
 use indicatif::ProgressBar;
 use nalgebra::Vector3;
-use ray::Ray;
-mod ray;
 
-fn hit_sphere(center: Vector3<f64>, radius: f64, ray: &Ray) -> f64 {
-    let oc = ray.origin - center;
-    let a = ray.direction.dot(&ray.direction);
-    let half_b = oc.dot(&ray.direction);
-    let c = oc.dot(&oc) - radius * radius;
-    let discriminant = half_b*half_b - a*c;
-    if discriminant < 0.0 {
-        return -1.0;
-    } else {
-        return (-half_b - discriminant.sqrt()) / a;
-    }
-}
+mod ray;
+mod hitable_list;
+mod hitable;
+use crate::ray::Ray;
+use crate::hitable_list::HitableList;
+use crate::hitable::Sphere;
 
 fn array_to_image(arr: Array3<u8>) -> RgbImage {
     assert!(arr.is_standard_layout());
@@ -29,12 +21,12 @@ fn array_to_image(arr: Array3<u8>) -> RgbImage {
         .expect("container should have the right size for the image dimensions")
 }
 
-fn get_color(ray: Ray) -> Vector3<f64> {
-    let t = hit_sphere(Vector3::new(0.0,0.0,-1.0), 0.5, &ray);
-    if t > 0.0 {
-        let n = ray.at(t) - Vector3::new(0.0,0.0,-1.0);
-        let normed = n / n.norm();
-        return 0.5 * Vector3::new(normed[0] + 1.0, normed[1] + 1.0, normed[2] + 1.0);
+fn get_color(ray: Ray, world: &HitableList) -> Vector3<f64> {
+    if let Some(x) = world.hit(&ray, 0.0, f64::INFINITY) {
+        // is this line needed?
+        let normed =  x.normal / x.normal.norm();
+        let ones = Vector3::new(1.0,1.0,1.0);
+        return 0.5 * (normed + ones);
     }
     let direction = ray.direction / ray.direction.norm();
     let a = 0.5 * (direction[1] + 1.0);
@@ -52,6 +44,12 @@ fn float_pixel_to_byte(pixel: &f64) -> u8 {
 }
 
 fn main() {
+
+    let mut world = HitableList::new();
+
+    world.add(Box::new(Sphere::new(Vector3::new(0.0,0.0,-1.0),0.5)));
+    world.add(Box::new(Sphere::new(Vector3::new(0.0,-100.5,-1.0),100.0)));
+
     let aspect_ratio: f64 = 16.0 / 9.0;
     let image_width: usize = 400;
     let image_height: usize = (image_width as f64 / aspect_ratio) as usize;
@@ -81,7 +79,7 @@ fn main() {
             let pixel_center = pixel00_loc + (i as f64 * pixel_delta_u) + (j as f64 * pixel_delta_v);
             let ray_direction = pixel_center - camera_point;
             let r = Ray::new(camera_point,ray_direction);
-            let color = get_color(r);
+            let color = get_color(r, &world);
             let (r,g,b) = (color[0], color[1], color[2]);
             pixels[[j,i,0]] = float_pixel_to_byte(&r);
             pixels[[j,i,1]] = float_pixel_to_byte(&g);
