@@ -21,17 +21,19 @@ pub struct Camera {
     samples_per_pixel: usize,
     pixels_sample_scale: f64,
     rng: ThreadRng,
+    max_depth: usize,
 }
 
 impl Camera {
 
     pub fn new() -> Self {
         let aspect_ratio = 16.0/9.0;
-        let image_width = 720;
+        let image_width = 400;
         let focal_length: f64 = 1.0;
         let view_height : f64 = 2.0;
         let center = Vector3::new(0.0,0.0,0.0);
         let samples_per_pixel = 15;
+        let max_depth = 10;
 
         let pixels_sample_scale = 1.0 / (samples_per_pixel as f64);
         let image_height: usize = (image_width as f64 / aspect_ratio) as usize;
@@ -49,15 +51,19 @@ impl Camera {
         let pixel00_loc = view_upper_left + 0.5 * (pixel_delta_u + pixel_delta_v);
 
         let rng = rand::thread_rng();
-        Self{aspect_ratio, image_width, image_height, center, pixel00_loc, pixel_delta_u, pixel_delta_v, samples_per_pixel, pixels_sample_scale, rng}
+        Self{aspect_ratio, image_width, image_height, center, pixel00_loc, pixel_delta_u, pixel_delta_v, samples_per_pixel, pixels_sample_scale, rng, max_depth}
     }
 
-    fn get_color(ray: Ray, world: &HitableList) -> Vector3<f64> {
+    fn get_color(&mut self, ray: Ray, world: &HitableList, depth: usize) -> Vector3<f64> {
+        if depth <= 0 {
+            return Vector3::new(0.0,0.0,0.0);
+        }
         if let Some(x) = world.hit(&ray, Interval::new(0.0, f64::INFINITY)) {
             // is this line needed?
             let normed =  x.normal / x.normal.norm();
-            let ones = Vector3::new(1.0,1.0,1.0);
-            return 0.5 * (normed + ones);
+            let new_direction = self.random_on_hemisphere(&normed);
+            let new_ray = Ray::new(x.p, new_direction);
+            return 0.5 * (self.get_color(new_ray,world, depth -1));
         }
         let direction = ray.direction / ray.direction.norm();
         let a = 0.5 * (direction[1] + 1.0);
@@ -67,14 +73,14 @@ impl Camera {
     pub fn render(&mut self, world: &HitableList) -> () {
 
         let mut pixels: Array3<u8> = Array3::zeros((self.image_height, self.image_width, 3));
-        let bar  = ProgressBar::new((self.image_width * self.image_height * 3) as u64);
+        let bar  = ProgressBar::new((self.image_width * self.image_height) as u64);
         for j in 0..self.image_height {
             for i in 0..self.image_width {
                 bar.inc(1);
                 let mut pixel_color = Vector3::new(0.0,0.0,0.0);
                 for _sample in 0..self.samples_per_pixel {
                     let ray = self.get_ray(i as f64,j as f64);
-                    pixel_color += Camera::get_color(ray, world);
+                    pixel_color += self.get_color(ray, world, self.max_depth);
                 }
                 pixel_color *= self.pixels_sample_scale;
                 pixels[[j,i,0]] = Camera::float_pixel_to_byte(&pixel_color.x);
@@ -124,4 +130,23 @@ impl Camera {
     fn sample_square(&mut self) -> Vector3<f64> {
         Vector3::new(self.rng.gen::<f64>() - 0.5, self.rng.gen::<f64>() - 0.5, 0.0)
     } 
+
+    fn random_vector(&mut self) -> Vector3<f64> {
+        return Vector3::new(self.rng.gen_range(-1.0..1.0),self.rng.gen_range(-1.0..1.0),self.rng.gen_range(-1.0..1.0))
+    }
+
+    fn random_unit_vector(&mut self) -> Vector3<f64> {
+        let random_vector = self.random_vector();
+        return random_vector / random_vector.norm();
+    }
+
+    fn random_on_hemisphere(&mut self, normal: &Vector3<f64>) -> Vector3<f64> {
+        let on_unit_sphere = self.random_unit_vector();
+        if on_unit_sphere.dot(normal) > 0.0 {
+            return on_unit_sphere;
+        }
+        else {
+            return -on_unit_sphere;
+        }
+    }
 }
