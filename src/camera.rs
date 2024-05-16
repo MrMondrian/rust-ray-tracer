@@ -1,4 +1,5 @@
 use nalgebra::Vector3;
+use rand::prelude::*;
 use image::RgbImage;
 use ndarray::Array3;
 use std::fs;
@@ -6,6 +7,8 @@ use indicatif::ProgressBar;
 use crate::ray::Ray;
 use crate::interval::Interval;
 use crate::hitable_list::HitableList;
+
+
 
 pub struct Camera {
     pub aspect_ratio: f64,
@@ -15,17 +18,22 @@ pub struct Camera {
     pixel00_loc: Vector3<f64>,
     pixel_delta_u: Vector3<f64>,
     pixel_delta_v: Vector3<f64>,
+    samples_per_pixel: usize,
+    pixels_sample_scale: f64,
+    rng: ThreadRng,
 }
 
 impl Camera {
 
     pub fn new() -> Self {
         let aspect_ratio = 16.0/9.0;
-        let image_width = 400;
+        let image_width = 720;
         let focal_length: f64 = 1.0;
         let view_height : f64 = 2.0;
         let center = Vector3::new(0.0,0.0,0.0);
+        let samples_per_pixel = 15;
 
+        let pixels_sample_scale = 1.0 / (samples_per_pixel as f64);
         let image_height: usize = (image_width as f64 / aspect_ratio) as usize;
         let view_width: f64 = view_height * (image_width as f64 / image_height as f64);
 
@@ -40,7 +48,8 @@ impl Camera {
 
         let pixel00_loc = view_upper_left + 0.5 * (pixel_delta_u + pixel_delta_v);
 
-        Self{aspect_ratio, image_width, image_height, center, pixel00_loc, pixel_delta_u, pixel_delta_v}
+        let rng = rand::thread_rng();
+        Self{aspect_ratio, image_width, image_height, center, pixel00_loc, pixel_delta_u, pixel_delta_v, samples_per_pixel, pixels_sample_scale, rng}
     }
 
     fn get_color(ray: Ray, world: &HitableList) -> Vector3<f64> {
@@ -55,21 +64,22 @@ impl Camera {
         return (1.0-a)*Vector3::new(1.0, 1.0, 1.0) + a*Vector3::new(0.5, 0.7, 1.0);
     }
 
-    pub fn render(&self, world: &HitableList) -> () {
+    pub fn render(&mut self, world: &HitableList) -> () {
 
         let mut pixels: Array3<u8> = Array3::zeros((self.image_height, self.image_width, 3));
         let bar  = ProgressBar::new((self.image_width * self.image_height * 3) as u64);
         for j in 0..self.image_height {
             for i in 0..self.image_width {
                 bar.inc(1);
-                let pixel_center = self.pixel00_loc + (i as f64 * self.pixel_delta_u) + (j as f64 * self.pixel_delta_v);
-                let ray_direction = pixel_center - self.center;
-                let r = Ray::new(self.center,ray_direction);
-                let color = Camera::get_color(r, &world);
-                let (r,g,b) = (color[0], color[1], color[2]);
-                pixels[[j,i,0]] = Camera::float_pixel_to_byte(&r);
-                pixels[[j,i,1]] = Camera::float_pixel_to_byte(&g);
-                pixels[[j,i,2]] = Camera::float_pixel_to_byte(&b);
+                let mut pixel_color = Vector3::new(0.0,0.0,0.0);
+                for _sample in 0..self.samples_per_pixel {
+                    let ray = self.get_ray(i as f64,j as f64);
+                    pixel_color += Camera::get_color(ray, world);
+                }
+                pixel_color *= self.pixels_sample_scale;
+                pixels[[j,i,0]] = Camera::float_pixel_to_byte(&pixel_color.x);
+                pixels[[j,i,1]] = Camera::float_pixel_to_byte(&pixel_color.y);
+                pixels[[j,i,2]] = Camera::float_pixel_to_byte(&pixel_color.z);
             }
         }
         bar.finish();
@@ -102,4 +112,16 @@ impl Camera {
             return scaled as u8;
         }
     }
+
+    fn get_ray(&mut self, i: f64, j: f64) -> Ray {
+        let offset = self.sample_square();
+        let pixel_sample = self.pixel00_loc + ((i + offset.x) * self.pixel_delta_u) + ((j + offset.y) * self.pixel_delta_v);
+        let ray_origin = self.center;
+        let ray_direction = pixel_sample - ray_origin;
+        return Ray::new(ray_origin, ray_direction);
+    }
+
+    fn sample_square(&mut self) -> Vector3<f64> {
+        Vector3::new(self.rng.gen::<f64>() - 0.5, self.rng.gen::<f64>() - 0.5, 0.0)
+    } 
 }

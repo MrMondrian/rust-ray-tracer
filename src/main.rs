@@ -16,7 +16,7 @@ fn main() {
     world.add(Box::new(Sphere::new(Vector3::new(0.0,0.0,-1.0),0.5)));
     world.add(Box::new(Sphere::new(Vector3::new(0.0,-100.5,-1.0),100.0)));
 
-    let cam = Camera::new();
+    let mut cam = Camera::new();
 
     cam.render(&world) 
 }
