@@ -1,4 +1,5 @@
 use nalgebra::Vector3;
+use crate::interval::Interval;
 use crate::ray::Ray;
 
 pub struct HitRecord {
@@ -19,7 +20,7 @@ impl HitRecord {
 }
 
 pub trait Hitable {
-    fn hit(&self, ray: &Ray, t_min: f64, t_min: f64) -> Option<HitRecord>;
+    fn hit(&self, ray: &Ray, bounds: &Interval) -> Option<HitRecord>;
 }
 
 pub struct Sphere {
@@ -36,7 +37,7 @@ impl Sphere {
 impl Hitable for Sphere {
     
 
-    fn hit(&self, ray: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord> {
+    fn hit(&self, ray: &Ray, bounds: &Interval) -> Option<HitRecord> {
         let oc = self.center - ray.origin;
         let a = ray.direction.dot(&ray.direction);
         let half_b = oc.dot(&ray.direction);
@@ -50,9 +51,9 @@ impl Hitable for Sphere {
         let sqrtd = discriminant.sqrt();
         let mut root = (half_b - sqrtd) / a;
 
-        if root <= t_min || root >= t_max {
+        if !bounds.contains(root) {
             root = (half_b + sqrtd) / a;
-            if root <= t_min || root >= t_max {
+            if !bounds.contains(root) {
                 return None;
             } 
         }

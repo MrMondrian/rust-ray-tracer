@@ -1,4 +1,5 @@
 use crate::hitable::Hitable;
+use crate::interval::Interval;
 use crate::hitable::HitRecord;
 use crate::ray::Ray;
 use std::vec::Vec;
@@ -22,13 +23,12 @@ impl HitableList {
         self.objects.push(object);
     }
 
-    pub fn hit(&self, ray: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord> {
-        let mut closest_so_far = t_max;
+    pub fn hit(&self, ray: &Ray, mut bounds: Interval) -> Option<HitRecord> {
         let mut record: Option<HitRecord> = None;
 
         for object in self.objects.iter() {
-            if let Some(x) = object.hit(ray, t_min, closest_so_far) {
-                closest_so_far = x.t;
+            if let Some(x) = object.hit(ray, &bounds) {
+                bounds.shrink_right(x.t);
                 record = Some(x);
             }
         }

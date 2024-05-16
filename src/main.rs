@@ -7,7 +7,9 @@ use nalgebra::Vector3;
 mod ray;
 mod hitable_list;
 mod hitable;
+mod interval;
 use crate::ray::Ray;
+use crate::interval::Interval;
 use crate::hitable_list::HitableList;
 use crate::hitable::Sphere;
 
@@ -22,7 +24,7 @@ fn array_to_image(arr: Array3<u8>) -> RgbImage {
 }
 
 fn get_color(ray: Ray, world: &HitableList) -> Vector3<f64> {
-    if let Some(x) = world.hit(&ray, 0.0, f64::INFINITY) {
+    if let Some(x) = world.hit(&ray, Interval::new(0.0, f64::INFINITY)) {
         // is this line needed?
         let normed =  x.normal / x.normal.norm();
         let ones = Vector3::new(1.0,1.0,1.0);
