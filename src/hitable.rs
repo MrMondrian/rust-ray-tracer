@@ -37,11 +37,11 @@ impl Hitable for Sphere {
     
 
     fn hit(&self, ray: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord> {
-        let oc = ray.origin - self.center;
+        let oc = self.center - ray.origin;
         let a = ray.direction.dot(&ray.direction);
         let half_b = oc.dot(&ray.direction);
-        let c = oc.dot(&oc) - self.radius * self.radius;
-        let discriminant = half_b*half_b - a*c;
+        let c = oc.dot(&oc) - (self.radius * self.radius);
+        let discriminant = (half_b*half_b) - (a*c);
 
         if discriminant < 0.0 {
             return None;
@@ -52,13 +52,13 @@ impl Hitable for Sphere {
 
         if root <= t_min || root >= t_max {
             root = (half_b + sqrtd) / a;
-            if root <= t_min || root <= t_max {
+            if root <= t_min || root >= t_max {
                 return None;
             } 
         }
 
-        let normal = (-self.center.add_scalar(root)) / self.radius;
         let p = ray.at(root);
+        let normal = (p - self.center) / self.radius;
         let record = HitRecord::new(p,root,ray,normal);
 
         return Some(record);
