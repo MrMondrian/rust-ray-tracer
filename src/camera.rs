@@ -32,7 +32,7 @@ impl Camera {
         let focal_length: f64 = 1.0;
         let view_height : f64 = 2.0;
         let center = Vector3::new(0.0,0.0,0.0);
-        let samples_per_pixel = 15;
+        let samples_per_pixel = 50;
         let max_depth = 10;
 
         let pixels_sample_scale = 1.0 / (samples_per_pixel as f64);
@@ -58,10 +58,9 @@ impl Camera {
         if depth <= 0 {
             return Vector3::new(0.0,0.0,0.0);
         }
-        if let Some(x) = world.hit(&ray, Interval::new(0.0, f64::INFINITY)) {
+        if let Some(x) = world.hit(&ray, Interval::new(0.001, f64::INFINITY)) {
             // is this line needed?
-            let normed =  x.normal / x.normal.norm();
-            let new_direction = self.random_on_hemisphere(&normed);
+            let new_direction = self.random_on_hemisphere(&x.normal);
             let new_ray = Ray::new(x.p, new_direction);
             return 0.5 * (self.get_color(new_ray,world, depth -1));
         }
@@ -135,13 +134,18 @@ impl Camera {
         return Vector3::new(self.rng.gen_range(-1.0..1.0),self.rng.gen_range(-1.0..1.0),self.rng.gen_range(-1.0..1.0))
     }
 
-    fn random_unit_vector(&mut self) -> Vector3<f64> {
-        let random_vector = self.random_vector();
-        return random_vector / random_vector.norm();
+    fn random_in_unit_sphere(&mut self) -> Vector3<f64> {
+        loop {
+            let p = self.random_vector();
+            if p.dot(&p) < 1.0 {
+                return p;
+            }
+        }
     }
 
     fn random_on_hemisphere(&mut self, normal: &Vector3<f64>) -> Vector3<f64> {
-        let on_unit_sphere = self.random_unit_vector();
+        let mut on_unit_sphere = self.random_in_unit_sphere();
+        on_unit_sphere /= on_unit_sphere.norm();
         if on_unit_sphere.dot(normal) > 0.0 {
             return on_unit_sphere;
         }
