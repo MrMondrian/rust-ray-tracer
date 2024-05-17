@@ -15,7 +15,7 @@ pub struct Lambertian {
 impl Material for Lambertian {
     fn scatter(&self, ray_in: &Ray, record: &HitRecord) -> Option<(Ray,Vector3<f64>)> {
         let mut scatter_direction = record.normal + self.random_unit_vector();
-        if scatter_direction.iter().all(|&x| x > 1e-8) {
+        if scatter_direction.iter().all(|&x| x < 1e-8) {
             scatter_direction = record.normal;
         }
         let scattered = Ray::new(record.p, scatter_direction);
@@ -32,7 +32,7 @@ impl Lambertian{
 
     fn random_vector(&self) -> Vector3<f64> {
         let mut rng = rand::thread_rng();
-        return Vector3::new(rng.gen_range(-1.0..1.0),rng.gen_range(-1.0..1.0),rng.gen_range(-1.0..1.0))
+        return Vector3::new(2.0*rng.gen::<f64>()-1.0, 2.0*rng.gen::<f64>()-1.0,2.0*rng.gen::<f64>()-1.0)
     }
 
     fn random_unit_vector(&self) -> Vector3<f64> {
