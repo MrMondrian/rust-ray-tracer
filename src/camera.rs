@@ -60,7 +60,7 @@ impl Camera {
         }
         if let Some(x) = world.hit(&ray, Interval::new(0.001, f64::INFINITY)) {
             // is this line needed?
-            let new_direction = self.random_on_hemisphere(&x.normal);
+            let new_direction = x.normal + self.random_unit_vector();
             let new_ray = Ray::new(x.p, new_direction);
             return 0.5 * (self.get_color(new_ray,world, depth -1));
         }
@@ -134,23 +134,8 @@ impl Camera {
         return Vector3::new(self.rng.gen_range(-1.0..1.0),self.rng.gen_range(-1.0..1.0),self.rng.gen_range(-1.0..1.0))
     }
 
-    fn random_in_unit_sphere(&mut self) -> Vector3<f64> {
-        loop {
-            let p = self.random_vector();
-            if p.dot(&p) < 1.0 {
-                return p;
-            }
-        }
-    }
-
-    fn random_on_hemisphere(&mut self, normal: &Vector3<f64>) -> Vector3<f64> {
-        let mut on_unit_sphere = self.random_in_unit_sphere();
-        on_unit_sphere /= on_unit_sphere.norm();
-        if on_unit_sphere.dot(normal) > 0.0 {
-            return on_unit_sphere;
-        }
-        else {
-            return -on_unit_sphere;
-        }
+    fn random_unit_vector(&mut self) -> Vector3<f64> {
+        let vec = self.random_vector();
+        return vec / vec.norm();
     }
 }
