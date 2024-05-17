@@ -1,20 +1,22 @@
 use nalgebra::Vector3;
 use crate::interval::Interval;
 use crate::ray::Ray;
+use crate::material::Material;
 
-pub struct HitRecord {
+pub struct HitRecord<'a> {
     pub p: Vector3<f64>,
     pub normal: Vector3<f64>,
     pub t: f64,
     pub front_face: bool,
+    pub mat: &'a dyn Material,
 }
 
-impl HitRecord {
+impl<'a> HitRecord<'a> {
 
-    pub fn new(p: Vector3<f64>, t: f64, ray: &Ray, out_normal: Vector3<f64>) -> Self {
+    pub fn new(p: Vector3<f64>, t: f64, ray: &Ray, out_normal: Vector3<f64>, mat: &'a dyn Material) -> Self {
         let front_face = (ray.direction.dot(&out_normal)) < 0.0;
         let normal = if front_face {out_normal} else {-out_normal};
-        Self{p, normal, t, front_face}
+        Self{p, normal, t, front_face, mat}
     }
 
 }
@@ -23,18 +25,19 @@ pub trait Hitable {
     fn hit(&self, ray: &Ray, bounds: &Interval) -> Option<HitRecord>;
 }
 
-pub struct Sphere {
+pub struct Sphere<M: Material> {
     pub center: Vector3<f64>,
     pub radius: f64,
+    pub mat: M,
 }
 
-impl Sphere {
-    pub fn new(center:Vector3<f64>, radius: f64) -> Self {
-        Self{center,radius}
+impl<M:Material> Sphere<M> {
+    pub fn new(center:Vector3<f64>, radius: f64, mat: M) -> Self {
+        Self{center,radius, mat}
     }
 }
 
-impl Hitable for Sphere {
+impl<M:Material> Hitable for Sphere<M> {
     
 
     fn hit(&self, ray: &Ray, bounds: &Interval) -> Option<HitRecord> {
@@ -60,7 +63,7 @@ impl Hitable for Sphere {
 
         let p = ray.at(root);
         let normal = (p - self.center) / self.radius;
-        let record = HitRecord::new(p,root,ray,normal);
+        let record = HitRecord::new(p,root,ray,normal,&self.mat);
 
         return Some(record);
     }

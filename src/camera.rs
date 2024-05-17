@@ -1,5 +1,4 @@
 use nalgebra::Vector3;
-use rand::prelude::*;
 use image::RgbImage;
 use ndarray::Array3;
 use std::fs;
@@ -7,7 +6,7 @@ use indicatif::ProgressBar;
 use crate::ray::Ray;
 use crate::interval::Interval;
 use crate::hitable_list::HitableList;
-
+use rand::prelude::*;
 
 
 pub struct Camera {
@@ -20,8 +19,8 @@ pub struct Camera {
     pixel_delta_v: Vector3<f64>,
     samples_per_pixel: usize,
     pixels_sample_scale: f64,
-    rng: ThreadRng,
     max_depth: usize,
+    rng: ThreadRng,
 }
 
 impl Camera {
@@ -49,20 +48,23 @@ impl Camera {
         let view_upper_left = center - Vector3::new(0.0,0.0,focal_length) - viewport_u/2.0 - viewport_v/2.0;
 
         let pixel00_loc = view_upper_left + 0.5 * (pixel_delta_u + pixel_delta_v);
-
         let rng = rand::thread_rng();
-        Self{aspect_ratio, image_width, image_height, center, pixel00_loc, pixel_delta_u, pixel_delta_v, samples_per_pixel, pixels_sample_scale, rng, max_depth}
+
+        Self{aspect_ratio, image_width, image_height, center, pixel00_loc, pixel_delta_u, pixel_delta_v, samples_per_pixel, pixels_sample_scale, max_depth,rng}
     }
 
     fn get_color(&mut self, ray: Ray, world: &HitableList, depth: usize) -> Vector3<f64> {
         if depth <= 0 {
             return Vector3::new(0.0,0.0,0.0);
         }
-        if let Some(x) = world.hit(&ray, Interval::new(0.001, f64::INFINITY)) {
+        if let Some(record) = world.hit(&ray, Interval::new(0.001, f64::INFINITY)) {
             // is this line needed?
-            let new_direction = x.normal + self.random_unit_vector();
-            let new_ray = Ray::new(x.p, new_direction);
-            return 0.5 * (self.get_color(new_ray,world, depth -1));
+            if let Some((scattered, attenuation)) = record.mat.scatter(&ray,&record) {
+                return attenuation.component_mul(&self.get_color(scattered,world,depth-1));
+            }
+            else {
+                return Vector3::new(0.0,0.0,0.0);
+            }
         }
         let direction = ray.direction / ray.direction.norm();
         let a = 0.5 * (direction[1] + 1.0);
@@ -82,9 +84,10 @@ impl Camera {
                     pixel_color += self.get_color(ray, world, self.max_depth);
                 }
                 pixel_color *= self.pixels_sample_scale;
-                pixels[[j,i,0]] = Camera::float_pixel_to_byte(&pixel_color.x);
-                pixels[[j,i,1]] = Camera::float_pixel_to_byte(&pixel_color.y);
-                pixels[[j,i,2]] = Camera::float_pixel_to_byte(&pixel_color.z);
+                let gamma_corrected = Camera::linear_to_gamma(pixel_color);
+                pixels[[j,i,0]] = Camera::float_pixel_to_byte(&gamma_corrected.x);
+                pixels[[j,i,1]] = Camera::float_pixel_to_byte(&gamma_corrected.y);
+                pixels[[j,i,2]] = Camera::float_pixel_to_byte(&gamma_corrected.z);
             }
         }
         bar.finish();
@@ -130,12 +133,7 @@ impl Camera {
         Vector3::new(self.rng.gen::<f64>() - 0.5, self.rng.gen::<f64>() - 0.5, 0.0)
     } 
 
-    fn random_vector(&mut self) -> Vector3<f64> {
-        return Vector3::new(self.rng.gen_range(-1.0..1.0),self.rng.gen_range(-1.0..1.0),self.rng.gen_range(-1.0..1.0))
-    }
-
-    fn random_unit_vector(&mut self) -> Vector3<f64> {
-        let vec = self.random_vector();
-        return vec / vec.norm();
+    fn linear_to_gamma(pixel: Vector3<f64>) -> Vector3<f64> {
+        Vector3::new(pixel.x.sqrt(),pixel.y.sqrt(),pixel.z.sqrt())
     }
 }
