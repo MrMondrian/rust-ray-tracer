@@ -6,7 +6,7 @@ use std::vec::Vec;
 
 
 pub struct HitableList {
-    pub objects: Vec<Box<dyn Hitable>>,
+    pub objects: Vec<Hitable>,
 }
 
 impl HitableList {
@@ -19,7 +19,7 @@ impl HitableList {
     //     self.objects.clear();
     // }
 
-    pub fn add(&mut self, object: Box<dyn Hitable>) -> () {
+    pub fn add(&mut self, object: Hitable) -> () {
         self.objects.push(object);
     }
 
